@@ -1,15 +1,18 @@
 package it.polito.tdp.extflightdelays.db;
 
 import java.sql.Connection;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
+import it.polito.tdp.extflightdelays.model.CoppiaAirport;
 import it.polito.tdp.extflightdelays.model.Flight;
 
 public class ExtFlightDelaysDAO {
@@ -85,6 +88,39 @@ public class ExtFlightDelaysDAO {
 			conn.close();
 			return result;
 
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
+	public List<CoppiaAirport> getCoppie(Map<Integer, Airport> idMap, Integer minDistanza){
+		
+		String sql = "SELECT * " + 
+				"FROM (SELECT ORIGIN_AIRPORT_ID, DESTINATION_AIRPORT_ID, AVG(DISTANCE) AS MEDIA " + 
+				"		FROM flights " + 
+				"		GROUP BY ORIGIN_AIRPORT_ID, DESTINATION_AIRPORT_ID " + 
+				"		ORDER BY ORIGIN_AIRPORT_ID, DESTINATION_AIRPORT_ID) AS VOLI " + 
+				"WHERE MEDIA >= ?";
+		
+		List<CoppiaAirport> listaCoppie = new ArrayList<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, minDistanza);
+			ResultSet rs = st.executeQuery();
+			
+			while(rs.next()) {
+				CoppiaAirport ca = new CoppiaAirport(idMap.get(rs.getInt("ORIGIN_AIRPORT_ID")),
+														idMap.get(rs.getInt("DESTINATION_AIRPORT_ID")), rs.getInt("MEDIA"));
+				listaCoppie.add(ca);
+			}
+			
+			conn.close();
+			return listaCoppie;
+			
 		} catch (SQLException e) {
 			e.printStackTrace();
 			System.out.println("Errore connessione al database");
